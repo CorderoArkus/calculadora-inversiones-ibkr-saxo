@@ -144,6 +144,10 @@ export function calculateRequiredMovePct(targetPrice, currentPrice) {
 export function calculateScenario(input) {
   const breakEvenPrice = solveBreakEvenPrice(input);
   const breakEven = calculateOperationAtSellPrice(input, breakEvenPrice);
+  const currentResult = calculateOperationAtSellPrice(input, input.currentPrice);
+  const currentMoveFromBuyPct = Number(input.buyPrice) > 0
+    ? ((Number(input.currentPrice) - Number(input.buyPrice)) / Number(input.buyPrice)) * 100
+    : null;
 
   let rawTargetPrice;
   let targetProfitEquivalent = null;
@@ -172,6 +176,8 @@ export function calculateScenario(input) {
     rawTargetResult,
     breakEvenPrice,
     breakEven,
+    currentResult,
+    currentMoveFromBuyPct,
     targetProfitEquivalent,
     rawTargetPrice,
     adjustedTargetPrice,

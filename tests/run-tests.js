@@ -131,4 +131,14 @@ close(calculateRequiredMovePct(12, 13), -7.6923076923);
   assert.equal(converted.currency, 'EUR');
 }
 
-console.log('✅ 13 casos de prueba pasados correctamente.');
+// 14. Precio actual: calcular P/L actual neto si se vende ahora.
+{
+  const scenario = calculateScenario(baseInput({ currentPrice: 11, targetPrice: 12 }));
+  close(scenario.currentResult.grossSell, 1100);
+  close(scenario.currentResult.grossPL, 100);
+  close(scenario.currentResult.netPL, 100);
+  close(scenario.currentResult.netReturnPct, 10);
+  close(scenario.currentMoveFromBuyPct, 10);
+}
+
+console.log('✅ 14 casos de prueba pasados correctamente.');

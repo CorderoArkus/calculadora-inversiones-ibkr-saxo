@@ -25,7 +25,7 @@ No necesita instalar dependencias. Usa `node:assert` y módulos ES.
 - `src/brokerFees.js`: defaults de broker, comisiones y coste de FX.
 - `src/taxes.js`: TOB, ITF española e impuesto personalizado.
 - `src/tickSize.js`: redondeo obligatorio hacia arriba al tick.
-- `src/calculations.js`: motor puro de cálculo, break-even y objetivos.
+- `src/calculations.js`: motor puro de cálculo, break-even, objetivos y P/L actual al precio de mercado.
 - `src/chart.js`: gráfico canvas con **Y = precio** y **X = P/L neto**.
 - `src/validation.js`: validaciones.
 - `src/app.js`: lectura de UI y renderizado.
@@ -59,6 +59,8 @@ Beneficio/Pérdida bruto = bruto venta − bruto compra
 Beneficio/Pérdida neto = importe neto salida − coste total entrada
 Rentabilidad neta % = beneficio neto / coste total entrada × 100
 % necesario desde precio actual = ((precio objetivo ajustado − precio actual) / precio actual) × 100
+P/L actual neto = importe neto de salida al precio actual − coste total de entrada
+Rentabilidad neta actual % = P/L actual neto / coste total entrada × 100
 ```
 
 ## Cambio de divisa
@@ -108,6 +110,8 @@ Ejemplos:
 - **Modo A:** introduces precio de venta objetivo.
 - **Modo B:** introduces beneficio neto objetivo; el motor busca el precio mínimo que alcanza ese beneficio neto y lo redondea hacia arriba al tick.
 - **Modo C:** introduces rentabilidad objetivo; el motor traduce esa rentabilidad a beneficio neto objetivo y busca el precio mínimo ajustado al tick.
+
+En todos los modos, el bloque superior del gráfico muestra el precio actual de mercado y el **P/L actual si vendes ahora**, incluyendo comisiones de venta, impuestos de venta y coste FX de salida si están activados.
 
 ## Supuestos configurables
 

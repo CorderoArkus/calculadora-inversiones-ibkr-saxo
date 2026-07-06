@@ -161,3 +161,33 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rg
   .layout, .hero { padding-left: 14px; padding-right: 14px; }
   .hero h1 { font-size: 2rem; }
 }
+
+.current-snapshot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 12px;
+}
+.snapshot-item {
+  background: linear-gradient(180deg, #f8fff4, #eef7ec);
+  border: 1px solid rgba(148, 189, 135, 0.55);
+  border-radius: 16px;
+  padding: 11px 12px;
+  display: grid;
+  gap: 4px;
+}
+.snapshot-item span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+.snapshot-item strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+.positive { color: #1d7a4b; }
+.negative { color: #a14535; }
+
+@media (max-width: 720px) {
+  .current-snapshot { grid-template-columns: 1fr; }
+}

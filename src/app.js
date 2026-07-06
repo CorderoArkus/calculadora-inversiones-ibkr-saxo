@@ -126,6 +126,44 @@ function row(label, value, highlight = false) {
   return `<div class="result-row ${highlight ? 'highlight' : ''}"><span>${label}</span><strong>${value}</strong></div>`;
 }
 
+
+function renderCurrentSnapshot(input, scenario) {
+  const cr = scenario.currentResult;
+  const c = cr.currency;
+  const netClass = cr.netPL >= 0 ? 'positive' : 'negative';
+  const grossClass = cr.grossPL >= 0 ? 'positive' : 'negative';
+  const moveToTarget = scenario.requiredMovePct === null
+    ? '—'
+    : `${pct(scenario.requiredMovePct)} ${scenario.targetReached ? '· objetivo alcanzado' : '· hasta objetivo'}`;
+
+  $('currentSnapshot').innerHTML = `
+    <div class="snapshot-item">
+      <span>Precio actual</span>
+      <strong>${formatPriceForTick(input.currentPrice, input.tickSize)} ${c}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>P/L neto actual si vendes ahora</span>
+      <strong class="${netClass}">${money(cr.netPL, c)}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>Rentabilidad neta actual</span>
+      <strong class="${netClass}">${pct(cr.netReturnPct)}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>P/L bruto actual</span>
+      <strong class="${grossClass}">${money(cr.grossPL, c)}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>Movimiento desde compra</span>
+      <strong>${pct(scenario.currentMoveFromBuyPct)}</strong>
+    </div>
+    <div class="snapshot-item">
+      <span>Movimiento pendiente hasta objetivo</span>
+      <strong>${moveToTarget}</strong>
+    </div>
+  `;
+}
+
 function renderResults(input, scenario) {
   const r = scenario.result;
   const c = r.currency;
@@ -136,6 +174,10 @@ function renderResults(input, scenario) {
 
   $('primaryResults').innerHTML = [
     row('Divisa principal', c, true),
+    row('Precio actual de mercado', priceFmt(input.currentPrice), true),
+    row('P/L bruto actual si vendes ahora', money(scenario.currentResult.grossPL, c)),
+    row('P/L neto actual si vendes ahora', money(scenario.currentResult.netPL, c), true),
+    row('Rentabilidad neta actual', pct(scenario.currentResult.netReturnPct), true),
     row('Coste bruto de compra', money(r.grossBuy, c)),
     row('Comisión de compra', money(r.buyCommission, c)),
     row('Impuesto de compra', money(r.buyTax, c)),
@@ -172,8 +214,9 @@ function renderResults(input, scenario) {
       row('Divisa adicional', dc, true),
       row('Coste total de entrada', money(converted.totalEntry, dc)),
       row('Importe neto de salida', money(converted.netExit, dc)),
-      row('Beneficio/Pérdida bruto', money(converted.grossPL, dc)),
-      row('Beneficio/Pérdida neto', money(converted.netPL, dc), true),
+      row('Beneficio/Pérdida bruto objetivo', money(converted.grossPL, dc)),
+      row('Beneficio/Pérdida neto objetivo', money(converted.netPL, dc), true),
+      row('P/L neto actual si vendes ahora', money(convertResultSummary(scenario.currentResult, c, dc, input.rates, checked('includeDisplayFxCost'), num('displayFxRatePct')).netPL, dc), true),
       checked('includeDisplayFxCost') ? row('Ajuste aplicado', `-${num('displayFxRatePct')}% por conversión visual`) : row('Ajuste aplicado', 'Sin coste de conversión visual')
     ].join('');
   }
@@ -210,6 +253,7 @@ function recalculate() {
 
   try {
     const scenario = calculateScenario(input);
+    renderCurrentSnapshot(input, scenario);
     renderResults(input, scenario);
     drawInvestmentChart($('plChart'), input, scenario, chartOptions());
   } catch (error) {
