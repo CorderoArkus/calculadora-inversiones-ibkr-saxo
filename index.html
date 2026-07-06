@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculadora de inversión IBKR / Saxo</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Calculadora auditable de acciones</p>
+      <h1>IBKR / Saxo · Precio objetivo, P/L neto, FX, impuestos y tick size</h1>
+      <p>El resultado principal siempre se calcula en la divisa de la operación. Los resultados adicionales son solo conversión visual.</p>
+    </div>
+    <button id="resetBrokerDefaults" type="button">Restaurar defaults del broker</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel stack">
+      <div class="card">
+        <h2>1. Entrada de operación</h2>
+        <div class="grid two">
+          <label>Nombre / ticker
+            <input id="ticker" value="ORY" autocomplete="off">
+          </label>
+          <label>Mercado
+            <input id="market" value="BME / NASDAQ / ASX" autocomplete="off">
+          </label>
+          <label>Divisa de cotización / operación
+            <select id="operationCurrency">
+              <option>EUR</option><option>USD</option><option>AUD</option>
+            </select>
+          </label>
+          <label>Broker
+            <select id="broker">
+              <option value="IBKR">Interactive Brokers</option>
+              <option value="SAXO">Saxo Trader</option>
+            </select>
+          </label>
+          <label>Número de acciones
+            <input id="shares" type="number" min="0" step="1" value="1000">
+          </label>
+          <label>Precio de compra
+            <input id="buyPrice" type="number" min="0" step="0.0001" value="2.748">
+          </label>
+          <label class="important-input">Precio actual de mercado
+            <input id="currentPrice" type="number" min="0" step="0.0001" value="3.00">
+          </label>
+          <label>Tick size
+            <input id="tickSize" type="number" min="0" step="0.0001" value="0.005">
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2. Divisas y cambio de divisa</h2>
+        <div class="grid two">
+          <label>Divisa base de la cuenta
+            <select id="accountCurrency">
+              <option>EUR</option><option>USD</option><option>AUD</option>
+            </select>
+          </label>
+          <label>Mostrar resultado adicional en
+            <select id="displayCurrency">
+              <option>EUR</option><option>USD</option><option>AUD</option>
+            </select>
+          </label>
+          <label>Tipo de cambio EUR/USD
+            <input id="eurUsd" type="number" min="0" step="0.000001" value="1.10">
+          </label>
+          <label>Tipo de cambio EUR/AUD
+            <input id="eurAud" type="number" min="0" step="0.000001" value="1.65">
+          </label>
+          <label>Tipo de cambio USD/AUD
+            <input id="usdAud" type="number" min="0" step="0.000001" value="1.50">
+          </label>
+          <label>Modo de conversión
+            <select id="fxMode">
+              <option value="auto">Automática</option>
+              <option value="manual">Manual / FX spot</option>
+            </select>
+          </label>
+        </div>
+        <div class="inline-controls">
+          <label class="check"><input id="fxEnabled" type="checkbox" checked> Aplicar cambio de divisa si cuenta y operación tienen divisa distinta</label>
+        </div>
+        <div class="grid four">
+          <label>Comisión FX automática %
+            <input id="fxAutoRatePct" type="number" min="0" step="0.0001" value="0.03">
+          </label>
+          <label>Comisión FX manual %
+            <input id="fxManualRatePct" type="number" min="0" step="0.0001" value="0.002">
+          </label>
+          <label>Mínimo FX manual
+            <input id="fxManualMinAmount" type="number" min="0" step="0.01" value="2">
+          </label>
+          <label>Divisa mínimo FX manual
+            <select id="fxManualMinCurrency"><option>USD</option><option>EUR</option><option>AUD</option></select>
+          </label>
+        </div>
+        <div class="inline-controls subtle-box">
+          <label class="check"><input id="includeDisplayFxCost" type="checkbox"> Incluir coste de conversión en resultado adicional</label>
+          <label>Coste conversión visual % <input id="displayFxRatePct" type="number" min="0" step="0.0001" value="0.25"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3. Comisiones de operación</h2>
+        <div class="grid two">
+          <label>Divisa de la comisión
+            <select id="commissionCurrency"><option>EUR</option><option>USD</option><option>AUD</option></select>
+          </label>
+          <label>Comisión mínima
+            <input id="commissionMin" type="number" min="0" step="0.0001" value="1">
+          </label>
+          <label>Comisión compra fija
+            <input id="commissionFixedBuy" type="number" min="0" step="0.0001" value="0">
+          </label>
+          <label>Comisión venta fija
+            <input id="commissionFixedSell" type="number" min="0" step="0.0001" value="0">
+          </label>
+          <label>Comisión porcentual compra %
+            <input id="commissionPctBuy" type="number" min="0" step="0.0001" value="0">
+          </label>
+          <label>Comisión porcentual venta %
+            <input id="commissionPctSell" type="number" min="0" step="0.0001" value="0">
+          </label>
+          <label>Comisión por acción compra
+            <input id="commissionPerShareBuy" type="number" min="0" step="0.000001" value="0.005">
+          </label>
+          <label>Comisión por acción venta
+            <input id="commissionPerShareSell" type="number" min="0" step="0.000001" value="0.005">
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>4. Impuestos</h2>
+        <div class="grid two">
+          <label>Residencia fiscal usada para defaults
+            <select id="taxResidency"><option value="BE">Bélgica</option><option value="ES">España</option><option value="OTHER">Otra</option></select>
+          </label>
+          <label class="check mt"><input id="manualTobForIbkr" type="checkbox"> Calcular TOB belga manualmente en IBKR</label>
+        </div>
+        <p id="ibkrManualHint" class="hint">Con Interactive Brokers la TOB belga queda desactivada por defecto. Solo se aplica si activas el modo manual.</p>
+        <div class="inline-controls">
+          <label class="check"><input id="applyTob" type="checkbox"> Aplicar TOB belga</label>
+          <label class="check"><input id="spanishItfSubject" type="checkbox"> Acción española sujeta a ITF</label>
+          <label class="check"><input id="applyCustomTax" type="checkbox"> Impuesto personalizado</label>
+        </div>
+        <div class="grid five">
+          <label>TOB compra %<input id="tobBuyPct" type="number" min="0" step="0.0001"></label>
+          <label>TOB venta %<input id="tobSellPct" type="number" min="0" step="0.0001"></label>
+          <label>ITF compra %<input id="itfBuyPct" type="number" min="0" step="0.0001"></label>
+          <label>Pers. compra %<input id="customBuyPct" type="number" min="0" step="0.0001"></label>
+          <label>Pers. venta %<input id="customSellPct" type="number" min="0" step="0.0001"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>5. Objetivo</h2>
+        <div class="mode-tabs">
+          <label><input type="radio" name="mode" value="targetPrice" checked> A · Precio venta objetivo</label>
+          <label><input type="radio" name="mode" value="targetProfit"> B · Beneficio neto objetivo</label>
+          <label><input type="radio" name="mode" value="targetReturnPct"> C · Rentabilidad objetivo %</label>
+        </div>
+        <div id="targetPriceBox" class="grid one">
+          <label>Precio de venta objetivo
+            <input id="targetPrice" type="number" min="0" step="0.0001" value="3.1267">
+          </label>
+        </div>
+        <div id="targetProfitBox" class="grid one" hidden>
+          <label>Beneficio neto objetivo en divisa de operación
+            <input id="targetProfit" type="number" step="0.01" value="500">
+          </label>
+        </div>
+        <div id="targetReturnBox" class="grid one" hidden>
+          <label>Rentabilidad neta objetivo %
+            <input id="targetReturnPct" type="number" step="0.01" value="5">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel stack sticky-col">
+      <div id="errors" class="errors" hidden></div>
+
+      <div class="card chart-card">
+        <div class="chart-header">
+          <div>
+            <h2>Gráfico</h2>
+            <p>Obligatorio: Y = precio de acción · X = beneficio / pérdida neta.</p>
+          </div>
+        </div>
+        <div class="chart-controls">
+          <label class="check"><input id="autoRange" type="checkbox" checked> Rango automático</label>
+          <label>Mín<input id="chartMinPrice" type="number" min="0" step="0.0001" value="2.00"></label>
+          <label>Máx<input id="chartMaxPrice" type="number" min="0" step="0.0001" value="4.00"></label>
+          <label>Incremento<input id="chartStepPrice" type="number" min="0" step="0.0001" value="0.005"></label>
+        </div>
+        <div class="chart-controls toggles">
+          <label class="check"><input id="showBreakEven" type="checkbox" checked> Break-even</label>
+          <label class="check"><input id="showCurrent" type="checkbox" checked> Precio actual</label>
+          <label class="check"><input id="showTarget" type="checkbox" checked> Objetivo</label>
+          <label class="check"><input id="showTaxes" type="checkbox" checked> Impuestos</label>
+          <label class="check"><input id="showCommissions" type="checkbox" checked> Comisiones</label>
+          <label class="check"><input id="showFxImpact" type="checkbox" checked> FX</label>
+        </div>
+        <canvas id="plChart" aria-label="Gráfico de precio contra beneficio neto"></canvas>
+      </div>
+
+      <div class="card results-card">
+        <h2>Resultados principales</h2>
+        <div id="primaryResults" class="results"></div>
+      </div>
+
+      <div class="card results-card">
+        <h2>Resultado adicional</h2>
+        <div id="additionalResults" class="results"></div>
+      </div>
+
+      <div class="card audit">
+        <h2>Auditoría rápida</h2>
+        <div id="auditBox"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

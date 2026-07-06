@@ -1,0 +1,10 @@
+{
+  "name": "investment-calculator-ibkr-saxo",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "serve": "python3 -m http.server 5173"
+  }
+}
