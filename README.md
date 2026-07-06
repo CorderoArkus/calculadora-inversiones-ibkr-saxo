@@ -125,3 +125,15 @@ Todo lo siguiente es editable por el usuario:
 - TOB, ITF e impuesto personalizado.
 - Tick size.
 - Rango y elementos visibles del gráfico.
+
+
+## Versión v3: P/L actual destacado
+
+En `Resultados principales` aparece ahora un bloque específico llamado **Situación actual: P/L si vendes ahora**. Ese bloque usa el `Precio actual de mercado` como precio de venta y calcula:
+
+- P/L bruto actual frente al precio de compra.
+- Importe neto de salida si vendes ahora.
+- P/L neto actual después de comisiones, impuestos y FX.
+- Rentabilidad neta actual.
+
+El archivo `.nojekyll` se incluye para que GitHub Pages publique la web estática sin procesarla con Jekyll.

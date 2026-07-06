@@ -122,8 +122,13 @@ function setErrors(errors) {
   box.innerHTML = `<strong>Revisa estos puntos:</strong><ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
 }
 
-function row(label, value, highlight = false) {
-  return `<div class="result-row ${highlight ? 'highlight' : ''}"><span>${label}</span><strong>${value}</strong></div>`;
+function row(label, value, highlight = false, valueClass = '') {
+  const strongClass = valueClass ? ` class="${valueClass}"` : '';
+  return `<div class="result-row ${highlight ? 'highlight' : ''}"><span>${label}</span><strong${strongClass}>${value}</strong></div>`;
+}
+
+function sectionTitle(title, subtitle = '') {
+  return `<div class="result-section-title"><strong>${title}</strong>${subtitle ? `<span>${subtitle}</span>` : ''}</div>`;
 }
 
 
@@ -172,29 +177,47 @@ function renderResults(input, scenario) {
     ? '—'
     : `${pct(scenario.requiredMovePct)} ${scenario.targetReached ? ' · objetivo alcanzado' : ' · pendiente'}`;
 
+  const current = scenario.currentResult;
+  const currentNetClass = current.netPL >= 0 ? 'positive' : 'negative';
+  const currentGrossClass = current.grossPL >= 0 ? 'positive' : 'negative';
+  const targetNetClass = r.netPL >= 0 ? 'positive' : 'negative';
+
   $('primaryResults').innerHTML = [
     row('Divisa principal', c, true),
+
+    sectionTitle(
+      'Situación actual: P/L si vendes ahora',
+      'Usa el precio actual como precio de venta y aplica la misma configuración de broker, impuestos, comisiones, FX y tick.'
+    ),
+    row('Precio de compra', priceFmt(input.buyPrice)),
     row('Precio actual de mercado', priceFmt(input.currentPrice), true),
-    row('P/L bruto actual si vendes ahora', money(scenario.currentResult.grossPL, c)),
-    row('P/L neto actual si vendes ahora', money(scenario.currentResult.netPL, c), true),
-    row('Rentabilidad neta actual', pct(scenario.currentResult.netReturnPct), true),
+    row('Movimiento del precio vs compra', pct(scenario.currentMoveFromBuyPct)),
+    row('P/L bruto actual vs compra', money(current.grossPL, c), false, currentGrossClass),
+    row('Coste total de entrada ya cargado', money(current.totalEntry, c)),
+    row('Importe neto de salida si vendes ahora', money(current.netExit, c)),
+    row('P/L neto actual después de costes', money(current.netPL, c), true, currentNetClass),
+    row('Rentabilidad neta actual', pct(current.netReturnPct), true, currentNetClass),
+
+    sectionTitle('Desglose de entrada'),
     row('Coste bruto de compra', money(r.grossBuy, c)),
     row('Comisión de compra', money(r.buyCommission, c)),
     row('Impuesto de compra', money(r.buyTax, c)),
     row('Coste conversión compra', money(r.buyFxCost, c)),
     row('Coste total de entrada', money(r.totalEntry, c), true),
-    row('Importe bruto de venta', money(r.grossSell, c)),
-    row('Comisión de venta', money(r.sellCommission, c)),
-    row('Impuesto de venta', money(r.sellTax, c)),
-    row('Coste conversión venta', money(r.sellFxCost, c)),
-    row('Importe neto de salida', money(r.netExit, c), true),
-    row('Beneficio/Pérdida bruto', money(r.grossPL, c)),
-    row('Beneficio/Pérdida neto', money(r.netPL, c), true),
-    row('Rentabilidad neta %', pct(r.netReturnPct), true),
+
+    sectionTitle('Objetivo / simulación de venta'),
+    row('Importe bruto de venta objetivo', money(r.grossSell, c)),
+    row('Comisión de venta objetivo', money(r.sellCommission, c)),
+    row('Impuesto de venta objetivo', money(r.sellTax, c)),
+    row('Coste conversión venta objetivo', money(r.sellFxCost, c)),
+    row('Importe neto de salida objetivo', money(r.netExit, c), true),
+    row('Beneficio/Pérdida bruto objetivo', money(r.grossPL, c)),
+    row('Beneficio/Pérdida neto objetivo', money(r.netPL, c), true, targetNetClass),
+    row('Rentabilidad neta objetivo %', pct(r.netReturnPct), true, targetNetClass),
     row('Precio break-even', priceFmt(scenario.breakEvenPrice)),
     row('Precio objetivo introducido/calculado', priceFmt(scenario.rawTargetPrice)),
     row('Precio objetivo ajustado al tick', priceFmt(scenario.adjustedTargetPrice), true),
-    row('Beneficio neto real al precio ajustado', money(r.netPL, c), true),
+    row('Beneficio neto real al precio ajustado', money(r.netPL, c), true, targetNetClass),
     row('% necesario desde precio actual', moveText, true)
   ].join('');
 

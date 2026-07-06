@@ -191,3 +191,22 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rg
 @media (max-width: 720px) {
   .current-snapshot { grid-template-columns: 1fr; }
 }
+
+.result-section-title {
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fff4, #edf7ea);
+  border: 1px solid rgba(148, 189, 135, 0.55);
+  display: grid;
+  gap: 3px;
+}
+.result-section-title strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+}
+.result-section-title span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
