@@ -51,7 +51,7 @@ export function drawInvestmentChart(canvas, input, scenario, options) {
   const height = rect.height;
   ctx.clearRect(0, 0, width, height);
 
-  const padding = { top: 22, right: 28, bottom: 42, left: 68 };
+  const padding = { top: 34, right: 38, bottom: 70, left: 88 };
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
 
@@ -129,7 +129,7 @@ export function drawInvestmentChart(canvas, input, scenario, options) {
     ctx.fillStyle = '#1f5138';
     ctx.beginPath(); ctx.arc(xx, yy, 5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#27352c';
-    drawText(ctx, label, xx + 8, yy - 8);
+    drawText(ctx, label, xx + 11, yy - 11);
   };
 
   point('Compra', chartInput.buyPrice, calculateOperationAtSellPrice(chartInput, chartInput.buyPrice).netPL, true);
@@ -138,19 +138,19 @@ export function drawInvestmentChart(canvas, input, scenario, options) {
   point('Objetivo', chartScenario.adjustedTargetPrice, chartScenario.result.netPL, options.showTarget);
 
   ctx.fillStyle = '#27352c';
-  drawText(ctx, `X = Beneficio/Pérdida neta (${chartInput.operationCurrency})`, padding.left + plotW / 2, height - 12, 'center');
+  drawText(ctx, `X = Beneficio/Pérdida neta (${chartInput.operationCurrency})`, padding.left + plotW / 2, height - 16, 'center');
   ctx.save();
-  ctx.translate(17, padding.top + plotH / 2);
+  ctx.translate(24, padding.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   drawText(ctx, 'Y = Precio de la acción', 0, 0, 'center');
   ctx.restore();
 
   for (let i = 0; i <= 5; i += 1) {
     const val = xMin + ((xMax - xMin) * i) / 5;
-    drawText(ctx, formatAxisMoney(val), x(val), padding.top + plotH + 18, 'center');
+    drawText(ctx, formatAxisMoney(val), x(val), padding.top + plotH + 25, 'center');
   }
   for (let i = 0; i <= 5; i += 1) {
     const val = yMin + ((yMax - yMin) * i) / 5;
-    drawText(ctx, formatPriceForTick(val, chartInput.tickSize), padding.left - 9, y(val) + 4, 'right');
+    drawText(ctx, formatPriceForTick(val, chartInput.tickSize), padding.left - 13, y(val) + 4, 'right');
   }
 }

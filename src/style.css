@@ -127,7 +127,7 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rg
 .chart-controls { margin-top: 8px; }
 .chart-controls label:not(.check) { max-width: 118px; }
 .toggles { font-size: 0.78rem; }
-#plChart { width: 100%; height: 360px; display: block; border-radius: 18px; border: 1px solid var(--line); margin-top: 12px; }
+#plChart { width: 100%; height: 390px; display: block; border-radius: 18px; border: 1px solid var(--line); margin-top: 18px; }
 
 .results { display: grid; gap: 6px; }
 .result-row {
@@ -212,7 +212,7 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rg
 }
 
 .current-price-toolbar {
-  margin-top: 12px;
+  margin-top: 16px;
   padding: 12px;
   border: 1px solid rgba(148, 189, 135, 0.55);
   border-radius: 18px;
@@ -259,4 +259,11 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rg
   #currentPriceSliderValue {
     text-align: left;
   }
+}
+.field-help {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.3;
 }

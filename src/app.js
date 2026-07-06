@@ -66,9 +66,9 @@ function readInput() {
     accountCurrency: val('accountCurrency'),
     displayCurrency: val('displayCurrency'),
     shares: num('shares'),
-    buyPrice: num('buyPrice'),
-    currentPrice: num('currentPrice'),
-    targetPrice: num('targetPrice'),
+    buyPrice: readTickedPrice('buyPrice', 'nearest'),
+    currentPrice: readTickedPrice('currentPrice', 'nearest'),
+    targetPrice: readTickedPrice('targetPrice', 'up'),
     targetProfit: num('targetProfit'),
     targetReturnPct: num('targetReturnPct'),
     tickSize: num('tickSize'),
@@ -131,25 +131,68 @@ function sectionTitle(title, subtitle = '') {
   return `<div class="result-section-title"><strong>${title}</strong>${subtitle ? `<span>${subtitle}</span>` : ''}</div>`;
 }
 
-function syncTickBasedInputs() {
+const PRICE_INPUT_IDS = ['buyPrice', 'currentPrice', 'targetPrice', 'chartMinPrice', 'chartMaxPrice', 'chartStepPrice'];
+
+function getTick() {
   const tick = num('tickSize');
-  if (!Number.isFinite(tick) || tick <= 0) return;
-  const step = String(tick);
-  // El precio actual debe avanzar con el tick real del instrumento al usar las flechas del input.
-  $('currentPrice').step = step;
-  // También tiene sentido que objetivo y escala del gráfico usen el mismo paso por defecto.
-  $('targetPrice').step = step;
-  $('chartStepPrice').step = step;
-  if (Number($('chartStepPrice').value || 0) <= 0) $('chartStepPrice').value = step;
+  return Number.isFinite(tick) && tick > 0 ? tick : null;
 }
 
-function snapInputToNearestTick(inputId) {
-  const tick = num('tickSize');
+function syncTickBasedInputs() {
+  const tick = getTick();
+  if (!tick) return;
+  const step = String(tick);
+
+  // TODOS los campos que representan precios del instrumento se mueven con el tick.
+  // No se aplica a comisiones, impuestos, FX ni tipos de cambio.
+  for (const inputId of PRICE_INPUT_IDS) {
+    const field = $(inputId);
+    if (field) field.step = step;
+  }
+
+  if (Number($('chartStepPrice').value || 0) <= 0) {
+    $('chartStepPrice').value = formatPriceForTick(tick, tick);
+  }
+}
+
+function snapPriceValueToTick(value, tick, mode = 'nearest') {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || !Number.isFinite(tick) || tick <= 0) return numeric;
+  if (mode === 'up') return roundUpToTick(numeric, tick);
+  if (mode === 'down') return roundDownToTick(numeric, tick);
+  return roundToNearestTick(numeric, tick);
+}
+
+function snapInputToTick(inputId, mode = 'nearest') {
+  const tick = getTick();
   const field = $(inputId);
+  if (!field || !tick) return;
   const value = Number(field.value);
-  if (!Number.isFinite(value) || !Number.isFinite(tick) || tick <= 0) return;
-  const snapped = roundToNearestTick(value, tick);
+  if (!Number.isFinite(value)) return;
+
+  let snapped;
+  if (inputId === 'chartStepPrice') {
+    // El incremento del gráfico no puede ser menor que un tick y debe ser múltiplo del tick.
+    snapped = Math.max(tick, roundUpToTick(Math.max(value, tick), tick));
+  } else {
+    snapped = snapPriceValueToTick(value, tick, mode);
+  }
   field.value = formatPriceForTick(snapped, tick);
+}
+
+function snapAllPriceInputsToTick() {
+  snapInputToTick('buyPrice', 'nearest');
+  snapInputToTick('currentPrice', 'nearest');
+  snapInputToTick('targetPrice', 'up');
+  snapInputToTick('chartMinPrice', 'down');
+  snapInputToTick('chartMaxPrice', 'up');
+  snapInputToTick('chartStepPrice', 'up');
+}
+
+function readTickedPrice(inputId, mode = 'nearest') {
+  const tick = getTick();
+  const value = num(inputId);
+  return tick ? snapPriceValueToTick(value, tick, mode) : value;
 }
 
 function currentPriceSliderBounds(input, scenario) {
@@ -175,15 +218,15 @@ function currentPriceSliderBounds(input, scenario) {
 }
 
 function setCurrentPriceFromToolbar(rawValue) {
-  const tick = num('tickSize');
-  if (!Number.isFinite(tick) || tick <= 0) return;
+  const tick = getTick();
+  if (!tick) return;
   const value = Math.max(tick, roundToNearestTick(Number(rawValue), tick));
   $('currentPrice').value = formatPriceForTick(value, tick);
   recalculate();
 }
 
 function moveCurrentPriceByTicks(deltaTicks) {
-  const tick = num('tickSize');
+  const tick = getTick();
   const current = num('currentPrice');
   if (!Number.isFinite(tick) || tick <= 0 || !Number.isFinite(current)) return;
   setCurrentPriceFromToolbar(current + (Number(deltaTicks) * tick));
@@ -320,16 +363,18 @@ function renderResults(input, scenario) {
     <p><strong>Entrada:</strong> bruto compra + comisión compra + impuesto compra + coste FX compra.</p>
     <p><strong>Salida:</strong> bruto venta − comisión venta − impuesto venta − coste FX venta.</p>
     <p><strong>FX:</strong> ${input.fx.enabled ? 'activado' : 'desactivado'}; solo se carga si divisa de cuenta (${input.accountCurrency}) y divisa de operación (${input.operationCurrency}) son distintas.</p>
-    <p><strong>Tick:</strong> objetivos y break-even se redondean siempre hacia arriba con tick ${input.tickSize}.</p>
+    <p><strong>Tick:</strong> todos los precios del instrumento usan tick ${input.tickSize}; compra/actual se ajustan al tick más cercano, objetivo/break-even siempre hacia arriba.</p>
   `;
 }
 
 function chartOptions() {
+  const tick = getTick();
+  const rawStep = num('chartStepPrice');
   return {
     autoRange: checked('autoRange'),
-    minPrice: num('chartMinPrice'),
-    maxPrice: num('chartMaxPrice'),
-    stepPrice: num('chartStepPrice'),
+    minPrice: tick ? roundDownToTick(num('chartMinPrice'), tick) : num('chartMinPrice'),
+    maxPrice: tick ? roundUpToTick(num('chartMaxPrice'), tick) : num('chartMaxPrice'),
+    stepPrice: tick ? Math.max(tick, roundUpToTick(Math.max(rawStep, tick), tick)) : rawStep,
     showBreakEven: checked('showBreakEven'),
     showCurrent: checked('showCurrent'),
     showTarget: checked('showTarget'),
@@ -369,8 +414,13 @@ function setupEvents() {
   $('taxResidency').addEventListener('change', () => { applyTaxDefaultsForBroker(); recalculate(); });
   $('manualTobForIbkr').addEventListener('change', () => { applyTaxDefaultsForBroker(); recalculate(); });
   $('tickSize').addEventListener('input', syncTickBasedInputs);
-  $('currentPrice').addEventListener('blur', () => { snapInputToNearestTick('currentPrice'); recalculate(); });
-  $('targetPrice').addEventListener('blur', () => { snapInputToNearestTick('targetPrice'); recalculate(); });
+  $('tickSize').addEventListener('change', () => { syncTickBasedInputs(); snapAllPriceInputsToTick(); recalculate(); });
+  $('buyPrice').addEventListener('blur', () => { snapInputToTick('buyPrice', 'nearest'); recalculate(); });
+  $('currentPrice').addEventListener('blur', () => { snapInputToTick('currentPrice', 'nearest'); recalculate(); });
+  $('targetPrice').addEventListener('blur', () => { snapInputToTick('targetPrice', 'up'); recalculate(); });
+  $('chartMinPrice').addEventListener('blur', () => { snapInputToTick('chartMinPrice', 'down'); recalculate(); });
+  $('chartMaxPrice').addEventListener('blur', () => { snapInputToTick('chartMaxPrice', 'up'); recalculate(); });
+  $('chartStepPrice').addEventListener('blur', () => { snapInputToTick('chartStepPrice', 'up'); recalculate(); });
   $('currentPriceSlider').addEventListener('input', event => setCurrentPriceFromToolbar(event.target.value));
   $('currentPriceDown').addEventListener('click', () => moveCurrentPriceByTicks(-1));
   $('currentPriceUp').addEventListener('click', () => moveCurrentPriceByTicks(1));
@@ -388,6 +438,7 @@ function init() {
   setupEvents();
   updateModeVisibility();
   syncTickBasedInputs();
+  snapAllPriceInputsToTick();
   recalculate();
 }
 

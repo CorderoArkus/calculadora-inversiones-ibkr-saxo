@@ -42,13 +42,14 @@
             <input id="shares" type="number" min="0" step="1" value="1000">
           </label>
           <label>Precio de compra
-            <input id="buyPrice" type="number" min="0" step="0.0001" value="2.748">
+            <input id="buyPrice" type="number" min="0" step="0.005" value="2.750">
           </label>
           <label class="important-input">Precio actual de mercado
-            <input id="currentPrice" type="number" min="0" step="0.0001" value="3.00">
+            <input id="currentPrice" type="number" min="0" step="0.005" value="3.000">
           </label>
           <label>Tick size
             <input id="tickSize" type="number" min="0" step="0.0001" value="0.005">
+            <small class="field-help">Todos los campos de precio del instrumento usan este tick: compra, actual, objetivo y rango del gráfico.</small>
           </label>
         </div>
       </div>
@@ -167,7 +168,7 @@
         </div>
         <div id="targetPriceBox" class="grid one">
           <label>Precio de venta objetivo
-            <input id="targetPrice" type="number" min="0" step="0.0001" value="3.1267">
+            <input id="targetPrice" type="number" min="0" step="0.005" value="3.130">
           </label>
         </div>
         <div id="targetProfitBox" class="grid one" hidden>
@@ -196,9 +197,9 @@
         <div id="currentSnapshot" class="current-snapshot" aria-live="polite"></div>
         <div class="chart-controls">
           <label class="check"><input id="autoRange" type="checkbox" checked> Rango automático</label>
-          <label>Mín<input id="chartMinPrice" type="number" min="0" step="0.0001" value="2.00"></label>
-          <label>Máx<input id="chartMaxPrice" type="number" min="0" step="0.0001" value="4.00"></label>
-          <label>Incremento<input id="chartStepPrice" type="number" min="0" step="0.0001" value="0.005"></label>
+          <label>Mín<input id="chartMinPrice" type="number" min="0" step="0.005" value="2.000"></label>
+          <label>Máx<input id="chartMaxPrice" type="number" min="0" step="0.005" value="4.000"></label>
+          <label>Incremento<input id="chartStepPrice" type="number" min="0" step="0.005" value="0.005"></label>
         </div>
         <div class="chart-controls toggles">
           <label class="check"><input id="showBreakEven" type="checkbox" checked> Break-even</label>

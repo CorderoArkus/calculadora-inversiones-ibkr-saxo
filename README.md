@@ -24,7 +24,7 @@ No necesita instalar dependencias. Usa `node:assert` y módulos ES.
 - `src/currency.js`: conversión EUR/USD/AUD.
 - `src/brokerFees.js`: defaults de broker, comisiones y coste de FX.
 - `src/taxes.js`: TOB, ITF española e impuesto personalizado.
-- `src/tickSize.js`: redondeo obligatorio hacia arriba al tick y ajuste inferior/cercano para controles de UI.
+- `src/tickSize.js`: redondeo obligatorio hacia arriba al tick y ajuste inferior/cercano para controles de UI. Todos los precios del instrumento pasan por tick size.
 - `src/calculations.js`: motor puro de cálculo, break-even, objetivos y P/L actual al precio de mercado.
 - `src/chart.js`: gráfico canvas con **Y = precio** y **X = P/L neto**.
 - `src/validation.js`: validaciones.
@@ -64,6 +64,27 @@ Rentabilidad neta actual % = P/L actual neto / coste total entrada × 100
 ```
 
 
+
+## Política de precios y tick size
+
+Todos los campos que representan **precio del instrumento** usan el `tick size` como incremento:
+
+- Precio de compra.
+- Precio actual de mercado.
+- Precio de venta objetivo.
+- Precio mínimo del gráfico.
+- Precio máximo del gráfico.
+- Incremento de precio del gráfico.
+- Slider y botones de precio actual.
+
+No se aplica tick size a comisiones, impuestos, tipos de cambio ni costes FX/broker.
+
+Regla aplicada:
+
+- Precio de compra y precio actual: se ajustan al tick válido más cercano.
+- Precio objetivo de venta, break-even y objetivos calculados: se ajustan siempre hacia arriba al tick válido más cercano, para no quedarse por debajo del objetivo mínimo.
+- Rango del gráfico: mínimo hacia abajo, máximo hacia arriba, incremento como mínimo un tick.
+
 ## Controles rápidos de precio actual
 
 Debajo del gráfico hay una barra para mover el **precio actual de mercado** sin volver al panel lateral.
@@ -100,7 +121,7 @@ El resultado principal permanece siempre en la divisa de la operación. El resul
 
 ## Tick size
 
-Para objetivos, break-even y precios calculados se usa:
+Los inputs de precio usan `step = tick size`. Para objetivos, break-even y precios calculados se usa:
 
 ```js
 roundUpToTick(price, tickSize)
@@ -158,3 +179,11 @@ Cambios añadidos:
 - Los resultados monetarios en EUR, USD y AUD se muestran siempre con **2 decimales**.
 - Las etiquetas del eje X del gráfico usan 2 decimales cuando el P/L es pequeño, en lugar de redondear todo a enteros.
 - Las etiquetas del eje Y del gráfico respetan los decimales necesarios según el tick size.
+
+
+## v7 - Ajuste visual del gráfico
+
+- Más margen interior del canvas para separar etiquetas, ejes y puntos.
+- Eje X con más espacio entre ticks y título.
+- Eje Y con más espacio lateral respecto a los valores.
+- Gráfico algo más alto para mejorar lectura sin cambiar cálculos.

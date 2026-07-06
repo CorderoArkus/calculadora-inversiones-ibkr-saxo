@@ -149,4 +149,12 @@ close(roundToNearestTick(3.1276, 0.005), 3.13);
 close(roundDownToTick(3.1267, 0.005), 3.125);
 close(roundDownToTick(1.3799, 0.01), 1.37);
 
-console.log('✅ 16 casos de prueba pasados correctamente.');
+// 17. Precio de compra también debe alinearse al tick del instrumento.
+close(roundToNearestTick(2.748, 0.005), 2.75);
+close(roundToNearestTick(2.752, 0.005), 2.75);
+
+// 18. Los precios de venta objetivo nunca bajan al ajustar por tick.
+close(roundUpToTick(3.1267, 0.005), 3.13);
+close(roundUpToTick(4.001, 0.01), 4.01);
+
+console.log('✅ 18 casos de prueba pasados correctamente.');
