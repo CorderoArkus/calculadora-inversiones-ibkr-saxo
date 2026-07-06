@@ -209,6 +209,15 @@
           <label class="check"><input id="showFxImpact" type="checkbox" checked> FX</label>
         </div>
         <canvas id="plChart" aria-label="Gráfico de precio contra beneficio neto"></canvas>
+        <div class="current-price-toolbar" aria-label="Control rápido del precio actual">
+          <button id="currentPriceDown" class="secondary-button" type="button">− tick</button>
+          <label class="current-price-slider-label">
+            <span>Precio actual rápido</span>
+            <input id="currentPriceSlider" type="range" min="0" max="10" step="0.005" value="3">
+          </label>
+          <button id="currentPriceUp" class="secondary-button" type="button">+ tick</button>
+          <output id="currentPriceSliderValue" for="currentPriceSlider">3,000 EUR</output>
+        </div>
       </div>
 
       <div class="card results-card">

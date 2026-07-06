@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { roundUpToTick } from '../src/tickSize.js';
+import { roundDownToTick, roundUpToTick, roundToNearestTick } from '../src/tickSize.js';
 import { brokerTobDefault } from '../src/brokerFees.js';
 import { calculateOperationAtSellPrice, solveMinimumPriceForProfit, solveTargetByReturnPct, calculateScenario, calculateRequiredMovePct, convertResultSummary } from '../src/calculations.js';
 import { calculateBuyTax, calculateSellTax } from '../src/taxes.js';
@@ -141,4 +141,12 @@ close(calculateRequiredMovePct(12, 13), -7.6923076923);
   close(scenario.currentMoveFromBuyPct, 10);
 }
 
-console.log('✅ 14 casos de prueba pasados correctamente.');
+// 15. Precio actual: ajuste al tick más cercano para campos de mercado, no techo obligatorio.
+close(roundToNearestTick(3.1267, 0.005), 3.125);
+close(roundToNearestTick(3.1276, 0.005), 3.13);
+
+// 16. Slider/barra de precio actual: el rango puede bajar al tick inferior sin redondear hacia arriba.
+close(roundDownToTick(3.1267, 0.005), 3.125);
+close(roundDownToTick(1.3799, 0.01), 1.37);
+
+console.log('✅ 16 casos de prueba pasados correctamente.');

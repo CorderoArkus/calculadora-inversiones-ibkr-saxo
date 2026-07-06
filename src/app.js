@@ -2,7 +2,7 @@ import { BROKER_DEFAULTS, brokerTobDefault } from './brokerFees.js';
 import { TAX_DEFAULTS } from './taxes.js';
 import { validateInput } from './validation.js';
 import { calculateScenario, convertResultSummary } from './calculations.js';
-import { formatPriceForTick } from './tickSize.js';
+import { formatPriceForTick, roundDownToTick, roundToNearestTick, roundUpToTick } from './tickSize.js';
 import { drawInvestmentChart } from './chart.js';
 
 const $ = id => document.getElementById(id);
@@ -11,8 +11,8 @@ const val = id => $(id).value;
 const checked = id => $(id).checked;
 
 function money(value, currency) {
-  const decimals = Math.abs(value) >= 1000 ? 2 : 4;
-  return `${Number(value).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: decimals })} ${currency}`;
+  if (!Number.isFinite(Number(value))) return `— ${currency}`;
+  return `${Number(value).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
 }
 
 function pct(value) {
@@ -131,6 +131,78 @@ function sectionTitle(title, subtitle = '') {
   return `<div class="result-section-title"><strong>${title}</strong>${subtitle ? `<span>${subtitle}</span>` : ''}</div>`;
 }
 
+function syncTickBasedInputs() {
+  const tick = num('tickSize');
+  if (!Number.isFinite(tick) || tick <= 0) return;
+  const step = String(tick);
+  // El precio actual debe avanzar con el tick real del instrumento al usar las flechas del input.
+  $('currentPrice').step = step;
+  // También tiene sentido que objetivo y escala del gráfico usen el mismo paso por defecto.
+  $('targetPrice').step = step;
+  $('chartStepPrice').step = step;
+  if (Number($('chartStepPrice').value || 0) <= 0) $('chartStepPrice').value = step;
+}
+
+function snapInputToNearestTick(inputId) {
+  const tick = num('tickSize');
+  const field = $(inputId);
+  const value = Number(field.value);
+  if (!Number.isFinite(value) || !Number.isFinite(tick) || tick <= 0) return;
+  const snapped = roundToNearestTick(value, tick);
+  field.value = formatPriceForTick(snapped, tick);
+}
+
+function currentPriceSliderBounds(input, scenario) {
+  const tick = Number(input.tickSize);
+  const values = [
+    input.buyPrice,
+    input.currentPrice,
+    scenario.breakEvenPrice,
+    scenario.adjustedTargetPrice,
+    scenario.rawTargetPrice
+  ].map(Number).filter(v => Number.isFinite(v) && v > 0);
+
+  const rawMin = checked('autoRange')
+    ? Math.max(tick, Math.min(...values) * 0.85)
+    : Math.max(tick, num('chartMinPrice'));
+  const rawMax = checked('autoRange')
+    ? Math.max(...values) * 1.15
+    : Math.max(num('chartMaxPrice'), input.currentPrice + tick);
+
+  const min = Math.max(0, roundDownToTick(rawMin, tick));
+  const max = Math.max(min + tick, roundUpToTick(rawMax, tick));
+  return { min, max };
+}
+
+function setCurrentPriceFromToolbar(rawValue) {
+  const tick = num('tickSize');
+  if (!Number.isFinite(tick) || tick <= 0) return;
+  const value = Math.max(tick, roundToNearestTick(Number(rawValue), tick));
+  $('currentPrice').value = formatPriceForTick(value, tick);
+  recalculate();
+}
+
+function moveCurrentPriceByTicks(deltaTicks) {
+  const tick = num('tickSize');
+  const current = num('currentPrice');
+  if (!Number.isFinite(tick) || tick <= 0 || !Number.isFinite(current)) return;
+  setCurrentPriceFromToolbar(current + (Number(deltaTicks) * tick));
+}
+
+function syncCurrentPriceToolbar(input, scenario) {
+  const slider = $('currentPriceSlider');
+  const output = $('currentPriceSliderValue');
+  const tick = Number(input.tickSize);
+  if (!slider || !output || !Number.isFinite(tick) || tick <= 0) return;
+
+  const bounds = currentPriceSliderBounds(input, scenario);
+  const snappedCurrent = roundToNearestTick(input.currentPrice, tick);
+  slider.min = String(bounds.min);
+  slider.max = String(bounds.max);
+  slider.step = String(tick);
+  slider.value = String(Math.min(bounds.max, Math.max(bounds.min, snappedCurrent)));
+  output.textContent = `${formatPriceForTick(snappedCurrent, tick)} ${input.operationCurrency}`;
+}
 
 function renderCurrentSnapshot(input, scenario) {
   const cr = scenario.currentResult;
@@ -269,6 +341,7 @@ function chartOptions() {
 
 function recalculate() {
   updateModeVisibility();
+  syncTickBasedInputs();
   const input = readInput();
   const errors = validateInput(input);
   setErrors(errors);
@@ -278,6 +351,7 @@ function recalculate() {
     const scenario = calculateScenario(input);
     renderCurrentSnapshot(input, scenario);
     renderResults(input, scenario);
+    syncCurrentPriceToolbar(input, scenario);
     drawInvestmentChart($('plChart'), input, scenario, chartOptions());
   } catch (error) {
     setErrors([error.message]);
@@ -286,6 +360,7 @@ function recalculate() {
 
 function setupEvents() {
   document.querySelectorAll('input, select').forEach(el => {
+    if (el.id === 'currentPriceSlider') return;
     el.addEventListener('input', recalculate);
     el.addEventListener('change', recalculate);
   });
@@ -293,6 +368,12 @@ function setupEvents() {
   $('broker').addEventListener('change', () => { applyBrokerDefaults(); recalculate(); });
   $('taxResidency').addEventListener('change', () => { applyTaxDefaultsForBroker(); recalculate(); });
   $('manualTobForIbkr').addEventListener('change', () => { applyTaxDefaultsForBroker(); recalculate(); });
+  $('tickSize').addEventListener('input', syncTickBasedInputs);
+  $('currentPrice').addEventListener('blur', () => { snapInputToNearestTick('currentPrice'); recalculate(); });
+  $('targetPrice').addEventListener('blur', () => { snapInputToNearestTick('targetPrice'); recalculate(); });
+  $('currentPriceSlider').addEventListener('input', event => setCurrentPriceFromToolbar(event.target.value));
+  $('currentPriceDown').addEventListener('click', () => moveCurrentPriceByTicks(-1));
+  $('currentPriceUp').addEventListener('click', () => moveCurrentPriceByTicks(1));
   $('resetBrokerDefaults').addEventListener('click', () => { applyBrokerDefaults(); recalculate(); });
   window.addEventListener('resize', recalculate);
 }
@@ -306,6 +387,7 @@ function init() {
   applyBrokerDefaults();
   setupEvents();
   updateModeVisibility();
+  syncTickBasedInputs();
   recalculate();
 }
 

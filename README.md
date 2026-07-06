@@ -24,7 +24,7 @@ No necesita instalar dependencias. Usa `node:assert` y módulos ES.
 - `src/currency.js`: conversión EUR/USD/AUD.
 - `src/brokerFees.js`: defaults de broker, comisiones y coste de FX.
 - `src/taxes.js`: TOB, ITF española e impuesto personalizado.
-- `src/tickSize.js`: redondeo obligatorio hacia arriba al tick.
+- `src/tickSize.js`: redondeo obligatorio hacia arriba al tick y ajuste inferior/cercano para controles de UI.
 - `src/calculations.js`: motor puro de cálculo, break-even, objetivos y P/L actual al precio de mercado.
 - `src/chart.js`: gráfico canvas con **Y = precio** y **X = P/L neto**.
 - `src/validation.js`: validaciones.
@@ -62,6 +62,16 @@ Rentabilidad neta % = beneficio neto / coste total entrada × 100
 P/L actual neto = importe neto de salida al precio actual − coste total de entrada
 Rentabilidad neta actual % = P/L actual neto / coste total entrada × 100
 ```
+
+
+## Controles rápidos de precio actual
+
+Debajo del gráfico hay una barra para mover el **precio actual de mercado** sin volver al panel lateral.
+
+- El slider usa el `tick size` como incremento.
+- Los botones `− tick` y `+ tick` mueven exactamente un tick cada vez.
+- Al moverlo se recalculan inmediatamente el P/L actual, la rentabilidad neta actual, el objetivo pendiente y el gráfico.
+- Los importes monetarios EUR/USD/AUD se muestran con dos decimales.
 
 ## Cambio de divisa
 
@@ -137,3 +147,14 @@ En `Resultados principales` aparece ahora un bloque específico llamado **Situac
 - Rentabilidad neta actual.
 
 El archivo `.nojekyll` se incluye para que GitHub Pages publique la web estática sin procesarla con Jekyll.
+
+## Versión v4: tick del precio actual y formato monetario
+
+Cambios añadidos:
+
+- El campo **Precio actual de mercado** usa dinámicamente el `Tick size` como `step`, por lo que las flechas del input suben/bajan con el tick real del instrumento.
+- Al salir del campo, el precio actual se ajusta al tick válido más cercano. Para precios objetivo se mantiene la regla conservadora: techo hacia arriba al tick.
+- El campo **Precio de venta objetivo** también usa el tick como paso de input.
+- Los resultados monetarios en EUR, USD y AUD se muestran siempre con **2 decimales**.
+- Las etiquetas del eje X del gráfico usan 2 decimales cuando el P/L es pequeño, en lugar de redondear todo a enteros.
+- Las etiquetas del eje Y del gráfico respetan los decimales necesarios según el tick size.

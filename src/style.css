@@ -210,3 +210,53 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rg
   font-size: 0.78rem;
   line-height: 1.35;
 }
+
+.current-price-toolbar {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(148, 189, 135, 0.55);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fff4, #eef7ec);
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+.secondary-button {
+  background: #e2efdc;
+  color: var(--ink);
+  border: 1px solid rgba(45, 122, 85, 0.25);
+  box-shadow: none;
+  padding: 10px 13px;
+}
+.current-price-slider-label {
+  gap: 5px;
+}
+.current-price-slider-label span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+#currentPriceSlider {
+  padding: 0;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+#currentPriceSliderValue {
+  min-width: 110px;
+  text-align: right;
+  font-weight: 900;
+  color: var(--green);
+}
+
+@media (max-width: 720px) {
+  .current-price-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .current-price-slider-label, #currentPriceSliderValue {
+    grid-column: 1 / -1;
+  }
+  #currentPriceSliderValue {
+    text-align: left;
+  }
+}

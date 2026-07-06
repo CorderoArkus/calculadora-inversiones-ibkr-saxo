@@ -1,4 +1,5 @@
 import { calculateOperationAtSellPrice, calculateScenario } from './calculations.js';
+import { formatPriceForTick } from './tickSize.js';
 
 function niceMinMax(values) {
   const min = Math.min(...values);
@@ -12,6 +13,11 @@ function drawText(ctx, text, x, y, align = 'left') {
   ctx.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
   ctx.textAlign = align;
   ctx.fillText(text, x, y);
+}
+
+function formatAxisMoney(value) {
+  if (Math.abs(value) >= 1000) return value.toFixed(0);
+  return value.toFixed(2);
 }
 
 function inputForChart(input, options) {
@@ -141,10 +147,10 @@ export function drawInvestmentChart(canvas, input, scenario, options) {
 
   for (let i = 0; i <= 5; i += 1) {
     const val = xMin + ((xMax - xMin) * i) / 5;
-    drawText(ctx, val.toFixed(0), x(val), padding.top + plotH + 18, 'center');
+    drawText(ctx, formatAxisMoney(val), x(val), padding.top + plotH + 18, 'center');
   }
   for (let i = 0; i <= 5; i += 1) {
     const val = yMin + ((yMax - yMin) * i) / 5;
-    drawText(ctx, val.toFixed(3), padding.left - 9, y(val) + 4, 'right');
+    drawText(ctx, formatPriceForTick(val, chartInput.tickSize), padding.left - 9, y(val) + 4, 'right');
   }
 }
