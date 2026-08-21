@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const fields = [
   "instrumentName", "instrumentTicker", "instrumentExchange", "operationNotes",
   "broker", "market", "accountCurrency", "assetCurrency", "resultCurrency", "tickSize",
-  "shares", "positionLong", "positionShort", "buyPrice", "currentPrice", "sellPrice", "targetProfit", "targetModePrice", "targetModeProfit", "stopPrice", "maxLoss",
+  "shares", "positionLong", "positionShort", "buyPrice", "currentPrice", "sellPrice", "targetProfit", "targetModePrice", "targetModeProfit", "stopModePrice", "stopModeLoss", "stopPrice", "maxLoss",
   "fxBuyRate", "fxSellRate", "fxResultRate", "fxBuyPct", "fxSellPct", "applyFxBuy", "applyFxSell",
   "buyFeeMode", "buyFeeValue", "buyFeeMin", "buyFeeMax",
   "sellFeeMode", "sellFeeValue", "sellFeeMin", "sellFeeMax",
@@ -63,6 +63,7 @@ function textValue(id) { const el = $(id); return el ? String(el.value || "").tr
 function checked(id) { const el = $(id); return el ? Boolean(el.checked) : false; }
 function pct(value) { return value / 100; }
 function isShort() { return checked("positionShort"); }
+function getStopMode() { return checked("stopModeLoss") ? "loss" : "price"; }
 
 function getTargetMode() {
   const profitMode = $("targetModeProfit");
@@ -86,6 +87,16 @@ function setTargetModeUi(activePrice) {
       targetProfitInput.value = profit.toFixed(2);
     }
   }
+}
+
+function setStopModeUi() {
+  const automatic = getStopMode() === "loss";
+  const stopInput = $("stopPrice");
+  const lossInput = $("maxLoss");
+  const tickButtons = document.querySelectorAll('button[data-tick="stopPrice"]');
+  if (stopInput) stopInput.readOnly = automatic;
+  if (lossInput) lossInput.readOnly = !automatic;
+  tickButtons.forEach(btn => { btn.disabled = automatic; });
 }
 
 function targetProfitAccountValue() {
@@ -342,6 +353,8 @@ function setAutoChartRange() {
   $("chartMax").value = roundToTick(maxPrice, tick).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
 }
 
+let chartRangeIsAuto = true;
+
 function getChartRange() {
   let min = n("chartMin");
   let max = n("chartMax");
@@ -597,7 +610,7 @@ function buildSummaryText(result, breakEven, targetPrice, stop, stopForMaxLoss) 
     `Acciones: ${n("shares").toLocaleString("es-ES")}`,
     `Tipo de posición: ${isShort() ? "CORTO" : "LARGO"}`,
     `Precio de entrada: ${formatPrice(n("buyPrice"), assetCurrency)}`,
-    `Coste total entrada: ${formatMoney(convertAccountToResult(result.totalBuyAccount), resultCurrency)}`,
+    `Importe neto de entrada: ${formatMoney(convertAccountToResult(result.totalBuyAccount), resultCurrency)}`,
     "",
     "OBJETIVO / SALIDA",
     `Precio objetivo de salida: ${Number.isFinite(targetPrice) ? formatPrice(targetPrice, assetCurrency) : "—"}`,
@@ -619,9 +632,9 @@ function buildSummaryText(result, breakEven, targetPrice, stop, stopForMaxLoss) 
     "",
     "COSTES Y FX",
     `Costes totales ida y vuelta: ${formatMoney(totalCosts, accountCurrency)}`,
-    `Comisión broker compra: ${formatMoney(result.buyFee.account, accountCurrency)} | venta: ${formatMoney(result.sellFee.account, accountCurrency)}`,
-    `TOB/Tobin compra: ${formatMoney(result.taxBuyAccount, accountCurrency)} | venta: ${formatMoney(result.taxSellAccount, accountCurrency)}`,
-    `FX compra: ${formatMoney(result.fxBuyAccount, accountCurrency)} | FX venta: ${formatMoney(result.fxSellAccount, accountCurrency)}`,
+    `Comisión broker entrada: ${formatMoney(result.buyFee.account, accountCurrency)} | salida: ${formatMoney(result.sellFee.account, accountCurrency)}`,
+    `TOB/Tobin entrada: ${formatMoney(result.taxBuyAccount, accountCurrency)} | salida: ${formatMoney(result.taxSellAccount, accountCurrency)}`,
+    `FX entrada: ${formatMoney(result.fxBuyAccount, accountCurrency)} | FX salida: ${formatMoney(result.fxSellAccount, accountCurrency)}`,
     `Tipo FX compra: 1 ${accountCurrency} = ${n("fxBuyRate")} ${assetCurrency} | venta: 1 ${accountCurrency} = ${n("fxSellRate")} ${assetCurrency}`
   ];
 
@@ -664,7 +677,8 @@ function renderCore() {
   const resultCurrency = s("resultCurrency");
   const targetMode = getTargetMode();
   let activeSellPrice = activeTargetPriceFromInputs();
-  if (!Number.isFinite(activeSellPrice)) activeSellPrice = n("sellPrice");
+  const requestedTargetWasImpossible = !Number.isFinite(activeSellPrice);
+  if (requestedTargetWasImpossible) activeSellPrice = n("sellPrice");
   const tick = n("tickSize") || 0.0001;
   activeSellPrice = Math.max(0, isShort() ? floorToTick(activeSellPrice, tick) : roundToTick(activeSellPrice, tick));
   if (targetMode === "profit" && $("sellPrice")) {
@@ -676,10 +690,7 @@ function renderCore() {
   if (!Number.isFinite(result.totalBuyAccount) || !Number.isFinite(result.netSellAccount)) warnings.push("Revisa los tipos de cambio: hay una conversión imposible o un FX en cero.");
   if (accountCurrency !== assetCurrency && (!n("fxBuyRate") || !n("fxSellRate"))) warnings.push("La divisa de cuenta y la de la acción son distintas: necesitas FX compra y venta.");
   if (s("resultCurrency") !== accountCurrency && s("resultCurrency") !== assetCurrency && !n("fxResultRate")) warnings.push("La divisa resultado es una tercera divisa: introduce FX resultado para convertir correctamente.");
-
-  const warnBox = $("warningBox");
-  warnBox.textContent = warnings.join(" ");
-  warnBox.classList.toggle("hidden", warnings.length === 0);
+  if (requestedTargetWasImpossible && targetMode === "profit") warnings.push("Ese beneficio objetivo no es alcanzable con estos datos, especialmente en un corto cuyo beneficio máximo está limitado por el precio cero.");
 
   const resultTotalBuy = convertAccountToResult(result.totalBuyAccount);
   const resultNetSell = convertAccountToResult(result.netSellAccount);
@@ -691,7 +702,7 @@ function renderCore() {
   setText("netReturn", formatPct(result.returnPct), result.returnPct >= 0 ? "positive" : "negative");
 
   const rows = [
-    ["Bruto", result.grossBuyAccount, result.grossSellAccount, result.grossSellAccount - result.grossBuyAccount],
+    ["Bruto", result.grossBuyAccount, result.grossSellAccount, isShort() ? result.grossBuyAccount - result.grossSellAccount : result.grossSellAccount - result.grossBuyAccount],
     ["Comisión broker", result.buyFee.account, result.sellFee.account, result.buyFee.account + result.sellFee.account],
     ["TOB / Tobin", result.taxBuyAccount, result.taxSellAccount, result.taxBuyAccount + result.taxSellAccount],
     ["Comisión cambio FX", result.fxBuyAccount, result.fxSellAccount, result.fxBuyAccount + result.fxSellAccount],
@@ -710,11 +721,22 @@ function renderCore() {
   const targetProfitAccount = targetProfitAccountValue();
   const maxLossAccount = convertResultToAccount(n("maxLoss"));
   const targetPrice = activeSellPrice;
-  const stop = calculateOperation(n("stopPrice"));
   const stopForMaxLoss = Number.isFinite(maxLossAccount) ? findPriceForProfit(-maxLossAccount) : NaN;
-  const risk = Math.abs(stop.profitAccount);
-  const reward = result.profitAccount;
+  let activeStopPrice = n("stopPrice");
+  if (getStopMode() === "loss" && Number.isFinite(stopForMaxLoss)) {
+    activeStopPrice = stopForMaxLoss;
+    $("stopPrice").value = activeStopPrice.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+  }
+  const stop = calculateOperation(activeStopPrice);
+  const stopOnWrongSide = n("buyPrice") > 0 && (isShort() ? activeStopPrice <= n("buyPrice") : activeStopPrice >= n("buyPrice"));
+  if (stopOnWrongSide) warnings.push(isShort() ? "En una posición corta, el stop de pérdida debe estar por encima del precio de entrada." : "En una posición larga, el stop de pérdida debe estar por debajo del precio de entrada.");
+  const risk = Math.max(0, -stop.profitAccount);
+  const reward = Math.max(0, result.profitAccount);
   const rr = risk > 0 ? reward / risk : 0;
+
+  const warnBox = $("warningBox");
+  warnBox.textContent = warnings.join(" ");
+  warnBox.classList.toggle("hidden", warnings.length === 0);
 
   const targetGrowth = n("buyPrice") > 0 && Number.isFinite(targetPrice) ? ((targetPrice / n("buyPrice")) - 1) * 100 : NaN;
   const currentPrice = n("currentPrice");
@@ -725,11 +747,12 @@ function renderCore() {
   setText("breakEvenPrice", formatPrice(breakEven, assetCurrency));
   setText("priceForTarget", Number.isFinite(targetPrice) ? formatPrice(targetPrice, assetCurrency) : "—");
   setText("activeTargetPrice", Number.isFinite(targetPrice) ? formatPrice(targetPrice, assetCurrency) : "—");
-  setText("targetGrowthPct", Number.isFinite(targetGrowth) ? formatPct(targetGrowth) : "—", targetGrowth >= 0 ? "positive" : "negative");
+  const targetDirectionGood = isShort() ? targetGrowth <= 0 : targetGrowth >= 0;
+  setText("targetGrowthPct", Number.isFinite(targetGrowth) ? formatPct(targetGrowth) : "—", targetDirectionGood ? "positive" : "negative");
   setText("currentProfit", Number.isFinite(currentProfit) ? formatMoney(currentProfit, resultCurrency) : "—", currentProfit >= 0 ? "positive" : "negative");
   setText("currentReturn", currentOp ? formatPct(currentOp.returnPct) : "—", currentOp && currentOp.returnPct >= 0 ? "positive" : "negative");
-  setText("currentToTarget", Number.isFinite(currentToTarget) ? formatPct(currentToTarget) : "—", currentToTarget >= 0 ? "positive" : "negative");
-  setText("currentToBep", Number.isFinite(currentToBep) ? formatPct(currentToBep) : "—", currentToBep <= 0 ? "positive" : "negative");
+  setText("currentToTarget", Number.isFinite(currentToTarget) ? formatPct(currentToTarget) : "—", (isShort() ? currentToTarget <= 0 : currentToTarget >= 0) ? "positive" : "negative");
+  setText("currentToBep", Number.isFinite(currentToBep) ? formatPct(currentToBep) : "—", (isShort() ? currentToBep >= 0 : currentToBep <= 0) ? "positive" : "negative");
   setText("stopLossResult", formatMoney(convertAccountToResult(stop.profitAccount), resultCurrency), stop.profitAccount >= 0 ? "positive" : "negative");
   setText("riskReward", `${rr.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`, rr >= 2 ? "positive" : rr > 0 ? "" : "negative");
   setText("stopForMaxLoss", Number.isFinite(stopForMaxLoss) ? formatPrice(stopForMaxLoss, assetCurrency) : "—");
@@ -767,10 +790,12 @@ function renderCore() {
     <p>Precio actual: <strong>${currentPrice > 0 ? formatPrice(currentPrice, assetCurrency) : "—"}</strong>. Si cierras ahora, el resultado neto estimado sería <strong>${Number.isFinite(currentProfit) ? formatMoney(currentProfit, resultCurrency) : "—"}</strong>. Desde el precio actual hasta el objetivo falta <strong>${Number.isFinite(currentToTarget) ? formatPct(currentToTarget) : "—"}</strong>.</p>
     <p>El break-even real exige un movimiento de <strong>${formatPct(moveNeeded)}</strong> desde tu entrada.</p>
     <p>Costes totales estimados de ida y vuelta: <strong>${formatMoney(totalCosts, accountCurrency)}</strong>. Eso equivale al <strong>${formatPct(costsVsProfit)}</strong> del beneficio neto objetivo actual.</p>
-    <p>En el objetivo actual, el capital total de entrada sería <strong>${formatMoney(resultTotalBuy, resultCurrency)}</strong> y la venta neta estimada <strong>${formatMoney(resultNetSell, resultCurrency)}</strong>.</p>
+    <p>En el objetivo actual, el importe neto de entrada sería <strong>${formatMoney(resultTotalBuy, resultCurrency)}</strong> y el importe neto de salida <strong>${formatMoney(resultNetSell, resultCurrency)}</strong>.</p>
   `;
 
   setTargetModeUi(activeSellPrice);
+  setStopModeUi();
+  if (chartRangeIsAuto) setAutoChartRange();
   try {
     drawChart(result, breakEven, targetPrice, stopForMaxLoss, currentPrice);
   } catch (chartError) {
@@ -814,8 +839,12 @@ function init() {
   fields.forEach(id => {
     const el = $(id);
     if (!el) return;
-    el.addEventListener("input", render);
-    el.addEventListener("change", render);
+    const update = () => {
+      if (id === "chartMin" || id === "chartMax") chartRangeIsAuto = false;
+      render();
+    };
+    el.addEventListener("input", update);
+    el.addEventListener("change", update);
   });
 
   $("broker").addEventListener("change", () => {
@@ -848,6 +877,7 @@ function init() {
   });
 
   $("autoChartRangeBtn").addEventListener("click", () => {
+    chartRangeIsAuto = true;
     setAutoChartRange();
     render();
   });
