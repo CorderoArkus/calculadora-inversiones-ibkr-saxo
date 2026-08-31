@@ -223,6 +223,18 @@ footer {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .form-section:last-child { margin-bottom: 0; }
+.capital-sizing-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(214, 167, 95, 0.22);
+  border-radius: 16px;
+  background: rgba(214, 167, 95, 0.065);
+}
+.compact-header { margin-bottom: .8rem; }
+.sizing-button { width: 100%; margin-top: .85rem; }
+.sizing-results { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: .85rem; }
+.sizing-note { margin-bottom: 0; }
+@media (max-width: 520px) { .sizing-results { grid-template-columns: 1fr; } }
 .section-header {
   margin-bottom: 0.9rem;
 }

@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const fields = [
   "instrumentName", "instrumentTicker", "instrumentExchange", "operationNotes",
   "broker", "market", "accountCurrency", "assetCurrency", "resultCurrency", "tickSize",
-  "shares", "positionLong", "positionShort", "buyPrice", "currentPrice", "sellPrice", "targetProfit", "targetModePrice", "targetModeProfit", "stopModePrice", "stopModeLoss", "stopPrice", "maxLoss",
+  "shares", "positionLong", "positionShort", "buyPrice", "currentPrice", "sellPrice", "targetProfit", "targetModePrice", "targetModeProfit", "stopModePrice", "stopModeLoss", "stopPrice", "maxLoss", "availableCapital", "capitalCurrency",
   "fxBuyRate", "fxSellRate", "fxResultRate", "fxBuyPct", "fxSellPct", "applyFxBuy", "applyFxSell",
   "buyFeeMode", "buyFeeValue", "buyFeeMin", "buyFeeMax",
   "sellFeeMode", "sellFeeValue", "sellFeeMin", "sellFeeMax",
@@ -122,8 +122,24 @@ function applyPreset(values) {
 
 function formatMoney(value, currency) {
   const symbol = currencySymbols[currency] || currency;
-  const decimals = Math.abs(value) >= 1000 ? 2 : 4;
-  return `${symbol} ${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: decimals })}`;
+  return `${symbol} ${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function tickDecimals(tick = n("tickSize")) {
+  if (!Number.isFinite(tick) || tick <= 0) return 4;
+  const text = tick.toFixed(10).replace(/0+$/, "");
+  return text.includes(".") ? text.split(".")[1].length : 0;
+}
+
+function formatInputPrice(value) {
+  return Number(value).toFixed(tickDecimals());
+}
+
+const tickPriceFields = ["buyPrice", "currentPrice", "sellPrice", "stopPrice", "scenarioLow", "scenarioMid", "scenarioHigh", "chartMin", "chartMax"];
+
+function updatePriceInputConfiguration() {
+  const tick = n("tickSize") || 0.0001;
+  tickPriceFields.forEach(id => { if ($(id)) $(id).step = String(tick); });
 }
 
 function formatPlainNumber(value, decimals = 2) {
@@ -136,7 +152,8 @@ function formatPct(value) {
 
 function formatPrice(value, currency) {
   const symbol = currencySymbols[currency] || currency;
-  return `${symbol} ${value.toLocaleString("es-ES", { minimumFractionDigits: 4, maximumFractionDigits: 6 })}`;
+  const decimals = tickDecimals();
+  return `${symbol} ${value.toLocaleString("es-ES", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 function roundToTick(price, tick) {
@@ -214,6 +231,55 @@ function brokerFee({ grossAsset, shares, side }) {
   fee = Math.max(fee, min);
   if (max !== null && Number.isFinite(max) && max > 0) fee = Math.min(fee, max);
   return { asset: fee, account: convertAssetToAccount(fee, side) };
+}
+
+function convertCapitalToAccount(amount) {
+  const currency = s("capitalCurrency");
+  const account = s("accountCurrency");
+  const asset = s("assetCurrency");
+  if (currency === account) return amount;
+  if (currency === asset) return convertAssetToAccount(amount, "buy");
+  const rate = n("fxResultRate");
+  return rate > 0 ? amount / rate : NaN;
+}
+
+function convertAccountToCapital(amount) {
+  const currency = s("capitalCurrency");
+  const account = s("accountCurrency");
+  const asset = s("assetCurrency");
+  if (currency === account) return amount;
+  if (currency === asset) return convertAccountToAsset(amount, "buy");
+  const rate = n("fxResultRate");
+  return rate > 0 ? amount * rate : NaN;
+}
+
+function entryCostAccountForShares(shares) {
+  const grossAsset = shares * n("buyPrice");
+  const grossAccount = convertAssetToAccount(grossAsset, "buy");
+  const fee = brokerFee({ grossAsset, shares, side: "buy" }).account;
+  const tax = convertAssetToAccount(grossAsset * pct(n("taxBuyPct")), "buy");
+  const preFx = grossAccount + fee + tax;
+  const fx = s("assetCurrency") !== s("accountCurrency") && checked("applyFxBuy")
+    ? Math.abs(preFx) * pct(n("fxBuyPct")) : 0;
+  return preFx + fx;
+}
+
+function calculateAffordableShares() {
+  if (isShort() || n("availableCapital") <= 0 || n("buyPrice") <= 0) return null;
+  const capitalAccount = convertCapitalToAccount(n("availableCapital"));
+  if (!Number.isFinite(capitalAccount) || capitalAccount <= 0) return null;
+  const grossCapacity = convertAccountToAsset(capitalAccount, "buy") / n("buyPrice");
+  if (!Number.isFinite(grossCapacity)) return null;
+  let low = 0;
+  let high = Math.max(1, Math.floor(grossCapacity) + 1);
+  while (entryCostAccountForShares(high) <= capitalAccount && high < 1000000000) high *= 2;
+  while (low + 1 < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (entryCostAccountForShares(mid) <= capitalAccount) low = mid;
+    else high = mid;
+  }
+  const costAccount = entryCostAccountForShares(low);
+  return { shares: low, cost: convertAccountToCapital(costAccount), remainder: n("availableCapital") - convertAccountToCapital(costAccount) };
 }
 
 function calculateOperation(sellPrice) {
@@ -349,8 +415,8 @@ function setAutoChartRange() {
   const highScenario = n("scenarioHigh");
   const minPrice = Math.max(tick, Math.min(stop || buy, target || buy, current || buy, lowScenario || buy, buy * 0.75));
   const maxPrice = Math.max(stop || buy, target || buy, current || buy, highScenario || buy, buy * 1.25) * 1.08;
-  $("chartMin").value = roundToTick(minPrice, tick).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
-  $("chartMax").value = roundToTick(maxPrice, tick).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+  $("chartMin").value = formatInputPrice(roundToTick(minPrice, tick));
+  $("chartMax").value = formatInputPrice(roundToTick(maxPrice, tick));
 }
 
 let chartRangeIsAuto = true;
@@ -452,7 +518,7 @@ function drawChart(result, breakEven, targetPrice, stopForMaxLoss, currentPrice)
     ctx.moveTo(plot.left, py);
     ctx.lineTo(width - plot.right, py);
     ctx.stroke();
-    ctx.fillText(formatPlainNumber(ceilToTick(value, tick), 3), 10, py + 4);
+    ctx.fillText(formatPlainNumber(ceilToTick(value, tick), tickDecimals(tick)), 10, py + 4);
   }
 
   // Línea cero vertical: punto donde pasas de pérdida a beneficio.
@@ -672,6 +738,7 @@ function fallbackCopy(text) {
 
 function renderCore() {
   updateLabels();
+  updatePriceInputConfiguration();
   const accountCurrency = s("accountCurrency");
   const assetCurrency = s("assetCurrency");
   const resultCurrency = s("resultCurrency");
@@ -682,10 +749,30 @@ function renderCore() {
   const tick = n("tickSize") || 0.0001;
   activeSellPrice = Math.max(0, isShort() ? floorToTick(activeSellPrice, tick) : roundToTick(activeSellPrice, tick));
   if (targetMode === "profit" && $("sellPrice")) {
-    $("sellPrice").value = activeSellPrice.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    $("sellPrice").value = formatInputPrice(activeSellPrice);
   }
   const result = calculateOperation(activeSellPrice);
   const warnings = [];
+  const sizing = calculateAffordableShares();
+  const capitalCurrency = s("capitalCurrency");
+  if (isShort()) {
+    setText("affordableShares", "—");
+    setText("affordableCost", "—");
+    setText("capitalRemainder", "—");
+    $("capitalSizingNote").textContent = "En corto, el número depende del margen exigido por el broker; el capital disponible por sí solo no basta.";
+  } else if (sizing) {
+    setText("affordableShares", sizing.shares.toLocaleString("es-ES"));
+    setText("affordableCost", formatMoney(sizing.cost, capitalCurrency));
+    setText("capitalRemainder", formatMoney(Math.max(0, sizing.remainder), capitalCurrency));
+    $("capitalSizingNote").textContent = entryCostAccountForShares(sizing.shares + 1) > convertCapitalToAccount(n("availableCapital"))
+      ? "Una acción adicional superaría el capital disponible."
+      : "Cálculo listo.";
+  } else {
+    setText("affordableShares", "—");
+    setText("affordableCost", "—");
+    setText("capitalRemainder", "—");
+    $("capitalSizingNote").textContent = "Introduce capital, precio y tipos de cambio válidos.";
+  }
 
   if (!Number.isFinite(result.totalBuyAccount) || !Number.isFinite(result.netSellAccount)) warnings.push("Revisa los tipos de cambio: hay una conversión imposible o un FX en cero.");
   if (accountCurrency !== assetCurrency && (!n("fxBuyRate") || !n("fxSellRate"))) warnings.push("La divisa de cuenta y la de la acción son distintas: necesitas FX compra y venta.");
@@ -725,7 +812,7 @@ function renderCore() {
   let activeStopPrice = n("stopPrice");
   if (getStopMode() === "loss" && Number.isFinite(stopForMaxLoss)) {
     activeStopPrice = stopForMaxLoss;
-    $("stopPrice").value = activeStopPrice.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    $("stopPrice").value = formatInputPrice(activeStopPrice);
   }
   const stop = calculateOperation(activeStopPrice);
   const stopOnWrongSide = n("buyPrice") > 0 && (isShort() ? activeStopPrice <= n("buyPrice") : activeStopPrice >= n("buyPrice"));
@@ -839,8 +926,17 @@ function init() {
   fields.forEach(id => {
     const el = $(id);
     if (!el) return;
-    const update = () => {
+    const update = (event) => {
       if (id === "chartMin" || id === "chartMax") chartRangeIsAuto = false;
+      if (id === "tickSize" && event.type === "change") {
+        const tick = n("tickSize") || 0.0001;
+        tickPriceFields.filter(priceId => priceId !== "chartMin" && priceId !== "chartMax").forEach(priceId => {
+          if ($(priceId) && n(priceId) >= 0) $(priceId).value = formatInputPrice(Math.round(n(priceId) / tick) * tick);
+        });
+      }
+      if (event.type === "change" && tickPriceFields.includes(id) && n(id) >= 0) {
+        $(id).value = formatInputPrice(Math.round(n(id) / (n("tickSize") || 0.0001)) * (n("tickSize") || 0.0001));
+      }
       render();
     };
     el.addEventListener("input", update);
@@ -871,7 +967,7 @@ function init() {
       const target = btn.dataset.tick;
       const dir = parseInt(btn.dataset.dir, 10);
       const tick = n("tickSize") || 0.0001;
-      $(target).value = Math.max(0, roundToTick(n(target) + dir * tick, tick)).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+      $(target).value = formatInputPrice(Math.max(0, roundToTick(n(target) + dir * tick, tick)));
       render();
     });
   });
@@ -883,6 +979,13 @@ function init() {
   });
 
   if ($("applyTargetPriceBtn")) $("applyTargetPriceBtn").addEventListener("click", applyTargetNetPrice);
+  if ($("applyAffordableSharesBtn")) $("applyAffordableSharesBtn").addEventListener("click", () => {
+    const sizing = calculateAffordableShares();
+    if (sizing) {
+      $("shares").value = sizing.shares;
+      render();
+    }
+  });
 
   $("resetBtn").addEventListener("click", resetDefaults);
   window.addEventListener("resize", render);
